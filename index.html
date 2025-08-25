@@ -1,127 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Migrant Boat Game</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: linear-gradient(to top, #1e3c72, #2a5298);
-      font-family: Arial, sans-serif;
-      color: white;
-      text-align: center;
-    }
-    canvas {
-      display: block;
-      margin: 0 auto;
-      background: url('https://i.ibb.co/6vM6Kd0/ocean.png') repeat-x;
-    }
-    #info {
-      position: absolute;
-      top: 10px;
-      width: 100%;
-      font-size: 18px;
-    }
-    a {
-      color: yellow;
-      text-decoration: none;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Migrate to the UK</title>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: #001f3f; /* dark ocean background */
+    font-family: sans-serif;
+    color: white;
+    text-align: center;
+  }
+  canvas {
+    display: block;
+    margin: auto;
+    background: #001f3f;
+  }
+  #gameOver {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    display: none;
+  }
+</style>
 </head>
 <body>
-  <div id="info">
-    Score: <span id="score">0</span> | 
-    <a href="https://www.youtube.com/@CrazyMandem" target="_blank">Visit my YouTube</a>
-  </div>
-  <canvas id="gameCanvas" width="600" height="400"></canvas>
+<canvas id="gameCanvas" width="600" height="800"></canvas>
+<div id="gameOver">Game Over! Refresh to try again.</div>
 
-  <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
 
-    // Boat player
-    const boat = {
-      x: 50,
-      y: canvas.height / 2 - 25,
-      width: 50,
-      height: 30,
-      speed: 5
-    };
+const boat = {
+  x: canvas.width/2 - 25,
+  y: canvas.height - 100,
+  width: 50,
+  height: 80,
+  speed: 7
+};
 
-    // Obstacles (waves and coast patrol)
-    const obstacles = [];
-    let frameCount = 0;
-    let score = 0;
-    const scoreEl = document.getElementById('score');
+const obstacles = [];
+let frames = 0;
+let gameOver = false;
 
-    // Controls
-    const keys = {};
-    window.addEventListener('keydown', e => keys[e.key] = true);
-    window.addEventListener('keyup', e => keys[e.key] = false);
+// Key control
+const keys = {};
+document.addEventListener('keydown', e => keys[e.key] = true);
+document.addEventListener('keyup', e => keys[e.key] = false);
 
-    function spawnObstacle() {
-      const height = Math.random() * 50 + 20;
-      const y = Math.random() * (canvas.height - height);
-      obstacles.push({x: canvas.width, y: y, width: 30, height: height});
+// Create obstacles
+function createObstacle() {
+  const width = Math.random() * 50 + 30;
+  const x = Math.random() * (canvas.width - width);
+  obstacles.push({x, y: -50, width, height: 50, speed: Math.random()*3+2});
+}
+
+// Draw the boat (simple dark-skinned man in boat)
+function drawBoat() {
+  // Boat
+  ctx.fillStyle = '#654321';
+  ctx.fillRect(boat.x, boat.y, boat.width, boat.height);
+
+  // Person (circle head)
+  ctx.fillStyle = '#3b2f2f'; // dark skin
+  ctx.beginPath();
+  ctx.arc(boat.x + boat.width/2, boat.y + 20, 10, 0, Math.PI*2);
+  ctx.fill();
+}
+
+// Draw obstacles
+function drawObstacles() {
+  ctx.fillStyle = '#ff4136'; // red obstacles
+  obstacles.forEach(obs => {
+    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+  });
+}
+
+// Update game objects
+function update() {
+  // Move boat
+  if (keys['ArrowLeft'] && boat.x > 0) boat.x -= boat.speed;
+  if (keys['ArrowRight'] && boat.x + boat.width < canvas.width) boat.x += boat.speed;
+
+  // Move obstacles
+  obstacles.forEach(obs => obs.y += obs.speed);
+
+  // Remove offscreen obstacles
+  while(obstacles.length && obstacles[0].y > canvas.height) obstacles.shift();
+
+  // Collision detection
+  obstacles.forEach(obs => {
+    if (boat.x < obs.x + obs.width &&
+        boat.x + boat.width > obs.x &&
+        boat.y < obs.y + obs.height &&
+        boat.y + boat.height > obs.y) {
+      gameOver = true;
     }
+  });
 
-    function update() {
-      // Move boat
-      if (keys['ArrowUp'] && boat.y > 0) boat.y -= boat.speed;
-      if (keys['ArrowDown'] && boat.y + boat.height < canvas.height) boat.y += boat.speed;
+  // Spawn new obstacles
+  if (frames % 60 === 0) createObstacle();
 
-      // Spawn obstacles
-      frameCount++;
-      if (frameCount % 90 === 0) spawnObstacle();
+  frames++;
+}
 
-      // Move obstacles
-      for (let i = obstacles.length - 1; i >= 0; i--) {
-        obstacles[i].x -= 4;
-        if (obstacles[i].x + obstacles[i].width < 0) {
-          obstacles.splice(i, 1);
-          score++;
-          scoreEl.textContent = score;
-        }
-      }
+// Draw everything
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBoat();
+  drawObstacles();
+}
 
-      // Check collision
-      for (let obs of obstacles) {
-        if (boat.x < obs.x + obs.width &&
-            boat.x + boat.width > obs.x &&
-            boat.y < obs.y + obs.height &&
-            boat.y + boat.height > obs.y) {
-          alert('Game Over! You tried to reach the UK.');
-          score = 0;
-          scoreEl.textContent = score;
-          boat.y = canvas.height / 2 - 25;
-          obstacles.length = 0;
-        }
-      }
-    }
+// Main game loop
+function loop() {
+  if (!gameOver) {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  } else {
+    document.getElementById('gameOver').style.display = 'block';
+  }
+}
 
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw boat
-      ctx.fillStyle = '#FFD700';
-      ctx.fillRect(boat.x, boat.y, boat.width, boat.height);
-
-      // Draw obstacles
-      ctx.fillStyle = '#FF4500';
-      for (let obs of obstacles) {
-        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-      }
-    }
-
-    function gameLoop() {
-      update();
-      draw();
-      requestAnimationFrame(gameLoop);
-    }
-
-    gameLoop();
-  </script>
+// Start game
+loop();
+</script>
 </body>
 </html>
+
